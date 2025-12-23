@@ -779,8 +779,8 @@ function generatePreview() {
                     ${email ? `<span><i class="fas fa-envelope"></i> ${email}</span>` : ''}
                     ${phone ? `<span><i class="fas fa-phone"></i> ${phone}</span>` : ''}
                     ${location ? `<span><i class="fas fa-map-marker-alt"></i> ${location}</span>` : ''}
-                    ${linkedin ? `<span><i class="fab fa-linkedin"></i> LinkedIn</span>` : ''}
-                    ${github ? `<span><i class="fab fa-github"></i> GitHub</span>` : ''}
+                    ${linkedin ? `<span><i class="fab fa-linkedin"></i> ${linkedin}</span>` : ''}
+                    ${github ? `<span><i class="fab fa-github"></i> ${github}</span>` : ''}
                 </div>
             </div>
         </div>
@@ -965,7 +965,7 @@ function generatePreview() {
         html += `
             <div class="resume-footer">
                 <div style="text-align: left; margin-bottom: 1rem;">
-                    <strong>Declaration:</strong> I hereby declare that all the information provided above is true and accurate to the best of my knowledge.
+                    <strong>Declaration:</strong> I ${name} hereby declare that all the information provided above is true and accurate to the best of my knowledge.
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                     <div style="text-align: left;">
@@ -973,7 +973,7 @@ function generatePreview() {
                     </div>
                     <div style="text-align: right;">
                         <div style="border-bottom: 1px solid white; width: 200px; margin-bottom: 0.25rem;"></div>
-                        <div style="font-size: 0.85em;">Signature</div>
+                        <div style="font-size: 0.85em;">[${name}]</div>
                     </div>
                 </div>
             </div>
@@ -1188,11 +1188,12 @@ function downloadWord() {
                     font-size: 11px;
                 }
                 .resume-footer {
-                    background-color: ${currentTheme.primaryColor};
-                    color: white;
+                    border: 2px solid ${currentTheme.primaryColor};
+                    color: #374151;
                     padding: 10px 15px;
                     margin-top: 15px;
                     font-size: 11px;
+                    background: transparent;
                 }
                 .mb-3 { margin-bottom: 8px; }
                 strong { font-weight: bold; color: #374151; font-size: 12px; }
