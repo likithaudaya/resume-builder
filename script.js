@@ -8,857 +8,24 @@ let technicalSkillCount = 0;
 let interestCount = 0;
 let certificationCount = 0;
 
+// Section visibility tracking
+let sectionVisibility = {
+    objective: true,
+    work: true,
+    education: true,
+    projects: true,
+    skills: true,
+    interests: true,
+    certifications: true,
+    declaration: true
+};
+
 // Theme settings
 let currentTheme = {
     fontFamily: 'Arial, sans-serif',
     fontSize: '14px',
     primaryColor: '#2563eb'
 };
-
-// Initialize on page load (handled once at top of file)
-
-// Load theme from local storage
-function loadThemeFromStorage() {
-    const saved = sessionStorage.getItem('resumeBuilderTheme');
-    if (saved) {
-        currentTheme = JSON.parse(saved);
-        document.getElementById('fontFamily').value = currentTheme.fontFamily;
-        document.getElementById('fontSize').value = currentTheme.fontSize;
-        document.getElementById('themeColor').value = currentTheme.primaryColor;
-        applyTheme();
-    }
-}
-
-// Save theme to storage
-function saveThemeToStorage() {
-    sessionStorage.setItem('resumeBuilderTheme', JSON.stringify(currentTheme));
-}
-
-// Apply theme
-function applyTheme() {
-    const preview = document.getElementById('resumePreview');
-    if (preview) {
-        preview.style.setProperty('--resume-font-family', currentTheme.fontFamily);
-        preview.style.setProperty('--resume-font-size', currentTheme.fontSize);
-        preview.style.setProperty('--resume-primary-color', currentTheme.primaryColor);
-    }
-    
-    // Update section headers color
-    document.querySelectorAll('.section-header h3').forEach(h3 => {
-        h3.style.color = currentTheme.primaryColor;
-    });
-    
-    document.querySelectorAll('.btn-icon, .btn-icon-sm').forEach(btn => {
-        btn.style.color = currentTheme.primaryColor;
-    });
-}
-
-// Update theme
-function updateTheme() {
-    currentTheme.fontFamily = document.getElementById('fontFamily').value;
-    currentTheme.fontSize = document.getElementById('fontSize').value;
-    currentTheme.primaryColor = document.getElementById('themeColor').value;
-    
-    applyTheme();
-    saveThemeToStorage();
-    generatePreview();
-}
-
-// Theme panel controls
-document.getElementById('themeBtn').addEventListener('click', function() {
-    document.getElementById('themeModal').classList.add('show');
-});
-
-function closeThemePanel() {
-    document.getElementById('themeModal').classList.remove('show');
-}
-
-// Make theme panel draggable
-function setupDraggableThemePanel() {
-    const modal = document.getElementById('themeModal');
-    const panel = document.querySelector('.theme-panel');
-    const header = document.querySelector('.theme-header');
-    
-    let isDragging = false;
-    let currentX;
-    let currentY;
-    let initialX;
-    let initialY;
-    let xOffset = 0;
-    let yOffset = 0;
-    
-    header.addEventListener('mousedown', dragStart);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', dragEnd);
-    
-    function dragStart(e) {
-        if (e.target === header || header.contains(e.target)) {
-            if (e.target.classList.contains('btn-close-modal') || e.target.closest('.btn-close-modal')) {
-                return;
-            }
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-            isDragging = true;
-            panel.classList.add('dragging');
-        }
-    }
-    
-    function drag(e) {
-        if (isDragging) {
-            e.preventDefault();
-            currentX = e.clientX - initialX;
-            currentY = e.clientY - initialY;
-            xOffset = currentX;
-            yOffset = currentY;
-            
-            panel.style.transform = `translate(${currentX}px, ${currentY}px)`;
-        }
-    }
-    
-    function dragEnd() {
-        isDragging = false;
-        panel.classList.remove('dragging');
-    }
-}
-
-// Preview controls
-document.getElementById('previewBtn').addEventListener('click', togglePreview);
-
-function togglePreview() {
-    const formSection = document.getElementById('formSection');
-    const previewSection = document.getElementById('previewSection');
-    const previewText = document.getElementById('previewText');
-    
-    if (previewSection.classList.contains('show')) {
-        previewSection.classList.remove('show');
-        formSection.classList.remove('with-preview');
-        previewText.textContent = 'Show Preview';
-    } else {
-        previewSection.classList.add('show');
-        formSection.classList.add('with-preview');
-        previewText.textContent = 'Hide Preview';
-        generatePreview();
-    }
-}
-
-// Validation
-function setupValidation() {
-    const inputs = {
-        name: /^[a-zA-Z\s]*$/,
-        email: /^[^\s@]*@?[^\s@]*\.?[^\s@]*$/,
-        phone: /^[0-9+\-\s()]*$/,
-        linkedin: /.*/,
-        github: /.*/
-    };
-    
-    Object.keys(inputs).forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            input.addEventListener('input', function() {
-                validateInput(input, inputs[id]);
-            });
-            
-            input.addEventListener('blur', function() {
-                strictValidate(input, id);
-            });
-        }
-    });
-}
-
-function validateInput(input, pattern) {
-    if (!input.value) {
-        input.classList.remove('error');
-        const errorDiv = input.closest('.input-with-clear').nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error-message')) {
-            errorDiv.textContent = '';
-        }
-        return true;
-    }
-    
-    if (!pattern.test(input.value)) {
-        input.classList.add('error');
-        return false;
-    } else {
-        input.classList.remove('error');
-        const errorDiv = input.closest('.input-with-clear').nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error-message')) {
-            errorDiv.textContent = '';
-        }
-        return true;
-    }
-}
-
-function strictValidate(input, type) {
-    const value = input.value.trim();
-    if (!value) return true;
-    
-    const validations = {
-        name: /^[a-zA-Z\s]+$/,
-        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        phone: /^[0-9+\-\s()]+$/,
-        linkedin: /linkedin\.com|^https?:\/\//,
-        github: /github\.com|^https?:\/\//
-    };
-    
-    if (validations[type] && !validations[type].test(value)) {
-        input.classList.add('error');
-        const messages = {
-            name: 'Name should contain only letters',
-            email: 'Enter a valid email address',
-            phone: 'Enter a valid phone number',
-            linkedin: 'Enter a valid LinkedIn URL',
-            github: 'Enter a valid GitHub URL'
-        };
-        const errorDiv = input.closest('.input-with-clear').nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error-message')) {
-            errorDiv.textContent = messages[type];
-        }
-        return false;
-    }
-    
-    input.classList.remove('error');
-    const errorDiv = input.closest('.input-with-clear').nextElementSibling;
-    if (errorDiv && errorDiv.classList.contains('error-message')) {
-        errorDiv.textContent = '';
-    }
-    return true;
-}
-
-function clearField(fieldId) {
-    const field = document.getElementById(fieldId);
-    if (field) {
-        field.value = '';
-        field.classList.remove('error');
-        const errorDiv = field.closest('.input-with-clear')?.nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error-message')) {
-            errorDiv.textContent = '';
-        }
-    }
-}
-
-// Photo upload
-function setupPhotoUpload() {
-    document.getElementById('photoUpload').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 2 * 1024 * 1024) {
-                alert('File size should be less than 2MB');
-                return;
-            }
-            if (!file.type.startsWith('image/')) {
-                alert('Please upload an image file');
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.getElementById('photoPreview');
-                preview.innerHTML = `
-                    <div style="position: relative; display: inline-block;">
-                        <img src="${e.target.result}" alt="Profile">
-                        <button class="photo-remove" onclick="removePhoto()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-}
-
-function removePhoto() {
-    document.getElementById('photoPreview').innerHTML = '';
-    document.getElementById('photoUpload').value = '';
-}
-
-// Work Experience
-function addWorkExperience() {
-    workExperienceCount++;
-    const container = document.getElementById('workExperienceContainer');
-    const item = document.createElement('div');
-    item.className = 'experience-item';
-    item.id = `work-${workExperienceCount}`;
-    item.setAttribute('data-index', workExperienceCount);
-    item.innerHTML = `
-        <button class="remove-item" onclick="removeItem('work-${workExperienceCount}')">
-            <i class="fas fa-times"></i> Remove
-        </button>
-        <div class="mb-3">
-            <label class="form-label">Company Name</label>
-            <div class="input-with-clear">
-                <input type="text" class="form-control work-company" placeholder="Company Name" data-tooltip="Enter company name">
-                <button class="clear-btn" onclick="clearItemField(this)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Start Date</label>
-                <input type="date" class="form-control work-start" onchange="calculateWorkDuration('work-${workExperienceCount}')" data-tooltip="Select start date">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">End Date (Leave empty for present)</label>
-                <input type="date" class="form-control work-end" onchange="calculateWorkDuration('work-${workExperienceCount}')" data-tooltip="Select end date or leave empty">
-            </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Job Title</label>
-            <div class="input-with-clear">
-                <input type="text" class="form-control work-title" placeholder="Job Title" data-tooltip="Enter your job title">
-                <button class="clear-btn" onclick="clearItemField(this)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="duration-display" id="duration-${workExperienceCount}" style="display: none;"></div>
-    `;
-    container.appendChild(item);
-}
-
-function calculateWorkDuration(itemId) {
-    const item = document.getElementById(itemId);
-    const startInput = item.querySelector('.work-start');
-    const endInput = item.querySelector('.work-end');
-    const durationDiv = item.querySelector('.duration-display');
-    
-    if (!startInput.value) {
-        durationDiv.style.display = 'none';
-        return;
-    }
-    
-    const start = new Date(startInput.value);
-    const end = endInput.value ? new Date(endInput.value) : new Date();
-    
-    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-    const years = Math.floor(months / 12);
-    const remainingMonths = months % 12;
-    
-    let duration = '';
-    if (years > 0 && remainingMonths > 0) {
-        duration = `${years} year${years > 1 ? 's' : ''} ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}`;
-    } else if (years > 0) {
-        duration = `${years} year${years > 1 ? 's' : ''}`;
-    } else {
-        duration = `${remainingMonths} month${remainingMonths > 1 ? 's' : ''}`;
-    }
-    
-    durationDiv.textContent = `Duration: ${duration}`;
-    durationDiv.style.display = 'block';
-}
-
-// Education
-function addEducation() {
-    educationCount++;
-    const container = document.getElementById('educationContainer');
-    const item = document.createElement('div');
-    item.className = 'education-item';
-    item.id = `education-${educationCount}`;
-    item.setAttribute('data-index', educationCount);
-    item.innerHTML = `
-        <button class="remove-item" onclick="removeItem('education-${educationCount}')">
-            <i class="fas fa-times"></i> Remove
-        </button>
-        <div class="mb-3">
-            <label class="form-label">College/University Name</label>
-            <div class="input-with-clear">
-                <input type="text" class="form-control edu-institution" placeholder="Institution Name" data-tooltip="Enter institution name">
-                <button class="clear-btn" onclick="clearItemField(this)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Degree/Course</label>
-            <div class="input-with-clear">
-                <input type="text" class="form-control edu-degree" placeholder="Degree" data-tooltip="Enter your degree or course">
-                <button class="clear-btn" onclick="clearItemField(this)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Year of Completion</label>
-            <input type="number" class="form-control edu-year" placeholder="2024" min="1950" max="2050" data-tooltip="Enter year of completion">
-        </div>
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Percentage (if applicable)</label>
-                <div class="input-with-clear">
-                    <input type="text" class="form-control edu-percentage" placeholder="e.g., 85%" data-tooltip="Enter percentage">
-                    <button class="clear-btn" onclick="clearItemField(this)">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">GPA (if applicable)</label>
-                <div class="input-with-clear">
-                    <input type="text" class="form-control edu-gpa" placeholder="e.g., 3.8/4.0" data-tooltip="Enter GPA">
-                    <button class="clear-btn" onclick="clearItemField(this)">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    container.appendChild(item);
-}
-
-// Projects
-function addProject() {
-    projectCount++;
-    const container = document.getElementById('projectsContainer');
-    const item = document.createElement('div');
-    item.className = 'project-item';
-    item.id = `project-${projectCount}`;
-    item.setAttribute('data-index', projectCount);
-    item.innerHTML = `
-        <button class="remove-item" onclick="removeItem('project-${projectCount}')">
-            <i class="fas fa-times"></i> Remove
-        </button>
-        <div class="mb-3">
-            <label class="form-label">Project Name</label>
-            <div class="input-with-clear">
-                <input type="text" class="form-control proj-name" placeholder="Project Name" data-tooltip="Enter project name">
-                <button class="clear-btn" onclick="clearItemField(this)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Description</label>
-            <div class="input-with-clear">
-                <textarea class="form-control proj-desc" rows="2" placeholder="Project Description" data-tooltip="Describe your project"></textarea>
-                <button class="clear-btn" onclick="clearItemField(this)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Project Link</label>
-            <div class="input-with-clear">
-                <input type="url" class="form-control proj-link" placeholder="https://project-link.com" data-tooltip="Enter project URL">
-                <button class="clear-btn" onclick="clearItemField(this)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Company/Organization (Optional)</label>
-            <div class="input-with-clear">
-                <input type="text" class="form-control proj-company" placeholder="Company Name" data-tooltip="Enter company if applicable">
-                <button class="clear-btn" onclick="clearItemField(this)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-    `;
-    container.appendChild(item);
-}
-
-// Skills
-function addSkill(type) {
-    let count, container, placeholder;
-    
-    if (type === 'personal') {
-        personalSkillCount++;
-        count = personalSkillCount;
-        container = document.getElementById('personalSkillsContainer');
-        placeholder = 'e.g., Leadership, Communication';
-    } else if (type === 'professional') {
-        professionalSkillCount++;
-        count = professionalSkillCount;
-        container = document.getElementById('professionalSkillsContainer');
-        placeholder = 'e.g., Project Management, Team Building';
-    } else {
-        technicalSkillCount++;
-        count = technicalSkillCount;
-        container = document.getElementById('technicalSkillsContainer');
-        placeholder = 'e.g., JavaScript, Python, React';
-    }
-    
-    const item = document.createElement('div');
-    item.className = 'skill-item mb-2';
-    item.id = `skill-${type}-${count}`;
-    item.innerHTML = `
-        <div class="input-with-clear">
-            <input type="text" class="form-control skill-input-${type}" placeholder="${placeholder}" data-tooltip="${placeholder}" oninput="updateSkillList('${type}')">
-            <button class="clear-btn" onclick="removeItem('skill-${type}-${count}'); updateSkillList('${type}')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-    container.appendChild(item);
-}
-
-function toggleSkillList(type) {
-    const listContainer = document.getElementById(`${type}SkillsList`);
-    const button = event.target.closest('.list-view-toggle');
-    
-    if (listContainer.classList.contains('show')) {
-        listContainer.classList.remove('show');
-        button.classList.remove('active');
-    } else {
-        listContainer.classList.add('show');
-        button.classList.add('active');
-        updateSkillList(type);
-    }
-}
-
-function updateSkillList(type) {
-    const container = document.getElementById(`${type}SkillsContainer`);
-    const listContainer = document.getElementById(`${type}SkillsList`);
-    const inputs = container.querySelectorAll(`.skill-input-${type}`);
-    
-    let html = '';
-    inputs.forEach(input => {
-        if (input.value.trim()) {
-            html += `<div class="skill-list-item"><i class="fas fa-check-circle" style="color: #667eea; margin-right: 0.5rem;"></i>${input.value}</div>`;
-        }
-    });
-    
-    listContainer.innerHTML = html || '<div style="text-align: center; color: #9ca3af; font-size: 0.875rem;">No skills added yet</div>';
-}
-
-// Interests
-function addInterest() {
-    interestCount++;
-    const container = document.getElementById('interestsContainer');
-    const item = document.createElement('div');
-    item.className = 'interest-item mb-2';
-    item.id = `interest-${interestCount}`;
-    item.innerHTML = `
-        <div class="input-with-clear">
-            <input type="text" class="form-control" placeholder="e.g., Reading, Photography, Traveling" data-tooltip="Enter your interests">
-            <button class="clear-btn" onclick="removeItem('interest-${interestCount}')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-    container.appendChild(item);
-}
-
-// Certifications
-function addCertification() {
-    certificationCount++;
-    const container = document.getElementById('certificationsContainer');
-    const item = document.createElement('div');
-    item.className = 'certification-item mb-2';
-    item.id = `certification-${certificationCount}`;
-    item.innerHTML = `
-        <div class="input-with-clear">
-            <input type="text" class="form-control" placeholder="e.g., AWS Certified Solutions Architect" data-tooltip="Enter certification name">
-            <button class="clear-btn" onclick="removeItem('certification-${certificationCount}')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-    container.appendChild(item);
-}
-
-// Remove item
-function removeItem(itemId) {
-    const item = document.getElementById(itemId);
-    if (item) {
-        item.remove();
-    }
-}
-
-function clearItemField(btn) {
-    const input = btn.parentElement.querySelector('.form-control');
-    if (input) {
-        input.value = '';
-    }
-}
-
-// Move entire sections up or down
-function moveSectionUp(containerId) {
-    const section = document.getElementById(containerId).closest('.section-card');
-    const prevSection = section.previousElementSibling;
-    
-    if (prevSection && prevSection.classList.contains('section-card')) {
-        section.parentNode.insertBefore(section, prevSection);
-    }
-}
-
-function moveSectionDown(containerId) {
-    const section = document.getElementById(containerId).closest('.section-card');
-    const nextSection = section.nextElementSibling;
-    
-    if (nextSection && nextSection.classList.contains('section-card')) {
-        section.parentNode.insertBefore(nextSection, section);
-    }
-}
-
-// Generate Preview
-function generatePreview() {
-    const photo = document.querySelector('#photoPreview img')?.src || '';
-    const name = document.getElementById('name').value || 'Your Name';
-    const email = document.getElementById('email').value;
-    const phone = document.getElementById('phone').value;
-    const objective = document.getElementById('objective').value;
-    const linkedin = document.getElementById('linkedin').value;
-    const github = document.getElementById('github').value;
-    const location = document.getElementById('location').value;
-    const declaration = document.getElementById('declaration').checked;
-    
-    let html = `
-        <div class="resume-header">
-            ${photo ? `<div class="resume-header-photo"><img src="${photo}" alt="Profile Photo"></div>` : ''}
-            <div class="resume-header-content">
-                <div class="resume-name">${name}</div>
-                <div class="resume-contact">
-                    ${email ? `<span><i class="fas fa-envelope"></i> ${email}</span>` : ''}
-                    ${phone ? `<span><i class="fas fa-phone"></i> ${phone}</span>` : ''}
-                    ${location ? `<span><i class="fas fa-map-marker-alt"></i> ${location}</span>` : ''}
-                    ${linkedin ? `<span><i class="fab fa-linkedin"></i> LinkedIn</span>` : ''}
-                    ${github ? `<span><i class="fab fa-github"></i> GitHub</span>` : ''}
-                </div>
-            </div>
-        </div>
-    `;
-    
-    if (objective) {
-        html += `
-            <div class="resume-section">
-                <div class="resume-section-title">Career Objective</div>
-                <p>${objective}</p>
-            </div>
-        `;
-    }
-    
-    // Work Experience
-    const workItems = document.querySelectorAll('.experience-item');
-    if (workItems.length > 0) {
-        let hasContent = false;
-        let workHtml = '<div class="resume-section"><div class="resume-section-title">Work Experience</div>';
-        
-        workItems.forEach(item => {
-            const company = item.querySelector('.work-company').value;
-            const title = item.querySelector('.work-title').value;
-            const start = item.querySelector('.work-start').value;
-            const end = item.querySelector('.work-end').value;
-            const durationDiv = item.querySelector('.duration-display');
-            const duration = durationDiv.style.display !== 'none' ? durationDiv.textContent : '';
-            
-            if (company || title || start) {
-                hasContent = true;
-                workHtml += `
-                    <div class="resume-item">
-                        ${title ? `<div class="resume-item-title">${title}</div>` : ''}
-                        ${company ? `<div class="resume-item-subtitle">${company}</div>` : ''}
-                        ${start ? `<div class="resume-item-date">${formatDate(start)} - ${end ? formatDate(end) : 'Present'}${duration ? ' • ' + duration : ''}</div>` : ''}
-                    </div>
-                `;
-            }
-        });
-        
-        workHtml += '</div>';
-        if (hasContent) html += workHtml;
-    }
-    
-    // Education
-    const eduItems = document.querySelectorAll('.education-item');
-    if (eduItems.length > 0) {
-        let hasContent = false;
-        let eduHtml = '<div class="resume-section"><div class="resume-section-title">Education</div>';
-        
-        eduItems.forEach(item => {
-            const institution = item.querySelector('.edu-institution').value;
-            const degree = item.querySelector('.edu-degree').value;
-            const year = item.querySelector('.edu-year').value;
-            const percentage = item.querySelector('.edu-percentage').value;
-            const gpa = item.querySelector('.edu-gpa').value;
-            
-            if (institution || degree) {
-                hasContent = true;
-                let gradeInfo = '';
-                if (percentage && gpa) {
-                    gradeInfo = `${percentage} | ${gpa}`;
-                } else if (percentage) {
-                    gradeInfo = percentage;
-                } else if (gpa) {
-                    gradeInfo = gpa;
-                }
-                
-                eduHtml += `
-                    <div class="resume-item">
-                        <div class="resume-item-title">${degree || 'Degree'}</div>
-                        <div class="resume-item-subtitle">${institution || 'Institution'}</div>
-                        ${year || gradeInfo ? `<div class="resume-item-date">${year ? year : ''}${gradeInfo ? ' • ' + gradeInfo : ''}</div>` : ''}
-                    </div>
-                `;
-            }
-        });
-        
-        eduHtml += '</div>';
-        if (hasContent) html += eduHtml;
-    }
-    
-    // Projects
-    const projItems = document.querySelectorAll('.project-item');
-    if (projItems.length > 0) {
-        let hasContent = false;
-        let projHtml = '<div class="resume-section"><div class="resume-section-title">Projects</div>';
-        
-        projItems.forEach(item => {
-            const projName = item.querySelector('.proj-name').value;
-            const projDesc = item.querySelector('.proj-desc').value;
-            const projLink = item.querySelector('.proj-link').value;
-            const projCompany = item.querySelector('.proj-company').value;
-            
-            if (projName || projDesc) {
-                hasContent = true;
-                projHtml += `
-                    <div class="resume-item">
-                        <div class="resume-item-title">${projName || 'Project Name'}</div>
-                        ${projCompany ? `<div class="resume-item-subtitle">${projCompany}</div>` : ''}
-                        ${projDesc ? `<div class="resume-item-description">${projDesc}</div>` : ''}
-                        ${projLink ? `<div class="resume-item-date"><i class="fas fa-link"></i> <a href="${projLink}" target="_blank">Project Link</a></div>` : ''}
-                    </div>
-                `;
-            }
-        });
-        
-        projHtml += '</div>';
-        if (hasContent) html += projHtml;
-    }
-    
-    // Skills
-    const personalSkills = Array.from(document.querySelectorAll('#personalSkillsContainer input')).map(i => i.value).filter(v => v);
-    const professionalSkills = Array.from(document.querySelectorAll('#professionalSkillsContainer input')).map(i => i.value).filter(v => v);
-    const technicalSkills = Array.from(document.querySelectorAll('#technicalSkillsContainer input')).map(i => i.value).filter(v => v);
-    
-    if (personalSkills.length || professionalSkills.length || technicalSkills.length) {
-        html += '<div class="resume-section"><div class="resume-section-title">Skills</div>';
-        
-        if (personalSkills.length) {
-            html += '<div class="mb-3"><strong>Personal Skills:</strong><div class="resume-skills-grid">';
-            personalSkills.forEach(skill => {
-                html += `<div class="resume-skill-item">${skill}</div>`;
-            });
-            html += '</div></div>';
-        }
-        
-        if (professionalSkills.length) {
-            html += '<div class="mb-3"><strong>Professional Skills:</strong><div class="resume-skills-grid">';
-            professionalSkills.forEach(skill => {
-                html += `<div class="resume-skill-item">${skill}</div>`;
-            });
-            html += '</div></div>';
-        }
-        
-        if (technicalSkills.length) {
-            html += '<div class="mb-3"><strong>Technical Skills:</strong><div class="resume-skills-grid">';
-            technicalSkills.forEach(skill => {
-                html += `<div class="resume-skill-item">${skill}</div>`;
-            });
-            html += '</div></div>';
-        }
-        
-        html += '</div>';
-    }
-    
-    // Interests
-    const interests = Array.from(document.querySelectorAll('#interestsContainer input')).map(i => i.value).filter(v => v);
-    if (interests.length) {
-        html += '<div class="resume-section"><div class="resume-section-title">Interests</div>';
-        html += '<div class="resume-skills-grid">';
-        interests.forEach(interest => {
-            html += `<div class="resume-skill-item">${interest}</div>`;
-        });
-        html += '</div></div>';
-    }
-    
-    // Certifications
-    const certifications = Array.from(document.querySelectorAll('#certificationsContainer input')).map(i => i.value).filter(v => v);
-    if (certifications.length) {
-        html += '<div class="resume-section"><div class="resume-section-title">Certifications</div>';
-        certifications.forEach(cert => {
-            html += `<div class="resume-item"><div class="resume-item-title">${cert}</div></div>`;
-        });
-        html += '</div>';
-    }
-    
-    // Declaration
-    if (declaration) {
-        html += `
-            <div class="resume-footer">
-                <strong>Declaration:</strong> I hereby declare that all the information provided above is true and accurate to the best of my knowledge.
-            </div>
-        `;
-    }
-    
-    document.getElementById('resumePreview').innerHTML = html;
-    applyTheme();
-}
-
-function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${months[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-// Download PDF using html2canvas and jsPDF
-function downloadPDF() {
-    generatePreview();
-    
-    const resumeElement = document.getElementById('resumePreview');
-    const originalWidth = resumeElement.style.width;
-    const originalMaxWidth = resumeElement.style.maxWidth;
-    
-    // Set a fixed width for consistency
-    resumeElement.style.width = '210mm';
-    resumeElement.style.maxWidth = '210mm';
-    
-    // Use html2canvas to capture the element
-    html2canvas(resumeElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-    }).then(canvas => {
-        // Restore original width
-        resumeElement.style.width = originalWidth;
-        resumeElement.style.maxWidth = originalMaxWidth;
-        
-        const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = window.jspdf;
-        
-        // A4 dimensions in mm
-        const pdfWidth = 210;
-        const pdfHeight = 297;
-        
-        // Calculate image dimensions
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-        
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        
-        // If content fits on one page
-        if (imgHeight <= pdfHeight) {
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-        } else {
-            // Multiple pages needed
-            let heightLeft = imgHeight;
-            let position = 0;
-            
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight;
-            
-            while (heightLeft > 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pdfHeight;
-            }
-        }
-        
-        pdf.save(`resume_${new Date().getTime()}.pdf`);
-    });
-}
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -874,9 +41,81 @@ document.addEventListener('DOMContentLoaded', function() {
     setupValidation();
     setupPhotoUpload();
     setupDraggableThemePanel();
+    setupVisibilityToggles();
+    setupTooltips();
 });
 
-// Load theme from local storage
+// Initialize tooltips: ensure CSS-based tooltips appear for inputs by moving `data-tooltip`
+// to a non-replaced ancestor (eg. `.input-with-clear`). Avoid using native `title` so
+// the existing custom CSS ([data-tooltip]:hover::after) is used.
+function setupTooltips() {
+    // Move section-level tooltips to their header to avoid duplicate tooltips
+    document.querySelectorAll('.section-card[data-tooltip]').forEach(card => {
+        const headerH3 = card.querySelector('.section-header h3');
+        if (headerH3) {
+            // only move if card contains interactive fields (to avoid losing tooltip)
+            if (card.querySelector('input, textarea, select, .input-with-clear')) {
+                if (!headerH3.hasAttribute('data-tooltip')) {
+                    headerH3.setAttribute('data-tooltip', card.getAttribute('data-tooltip'));
+                }
+                card.removeAttribute('data-tooltip');
+            }
+        }
+    });
+    const isReplaced = el => {
+        if (!el || !el.tagName) return false;
+        const t = el.tagName.toUpperCase();
+        return ['INPUT', 'TEXTAREA', 'SELECT', 'IMG'].includes(t);
+    };
+
+    const applyTooltip = el => {
+        try {
+            const tip = el.getAttribute && el.getAttribute('data-tooltip');
+            if (!tip) return;
+
+            // If element is a replaced element (input/textarea/select/img), attach tooltip to a wrapper
+            if (isReplaced(el)) {
+                const host = el.closest('.input-with-clear') || el.parentElement || el;
+                if (host && host !== el) {
+                    if (!host.hasAttribute('data-tooltip')) host.setAttribute('data-tooltip', tip);
+                    // remove tooltip from the replaced element to avoid duplicates
+                    if (el.hasAttribute('data-tooltip')) el.removeAttribute('data-tooltip');
+                    // remove data-tooltip from ancestor elements up to the section-card,
+                    // but keep the section header tooltip (h3) so section-level tips still show on header hover
+                    let anc = host.parentElement;
+                    while (anc && anc !== document.body && !anc.classList.contains('section-card')) {
+                        if (anc.hasAttribute && anc.hasAttribute('data-tooltip')) anc.removeAttribute('data-tooltip');
+                        anc = anc.parentElement;
+                    }
+                } else {
+                    // fallback: ensure element keeps data-tooltip
+                    el.setAttribute('data-tooltip', tip);
+                }
+                // remove native title to prevent browser tooltip
+                if (el.title) el.removeAttribute('title');
+            } else {
+                // non-replaced elements can keep data-tooltip; ensure no native title overrides
+                if (el.title) el.removeAttribute('title');
+            }
+        } catch (e) {}
+    };
+
+    document.querySelectorAll('[data-tooltip]').forEach(applyTooltip);
+
+    const mo = new MutationObserver(muts => {
+        muts.forEach(m => {
+            m.addedNodes.forEach(node => {
+                if (node.nodeType !== 1) return;
+                if (node.hasAttribute && node.hasAttribute('data-tooltip')) applyTooltip(node);
+                if (node.querySelectorAll) node.querySelectorAll('[data-tooltip]').forEach(applyTooltip);
+            });
+        });
+    });
+
+    mo.observe(document.body, { childList: true, subtree: true });
+}
+
+// Load theme from storage
 function loadThemeFromStorage() {
     const saved = sessionStorage.getItem('resumeBuilderTheme');
     if (saved) {
@@ -902,7 +141,6 @@ function applyTheme() {
         preview.style.setProperty('--resume-primary-color', currentTheme.primaryColor);
     }
     
-    // Update section headers color
     document.querySelectorAll('.section-header h3').forEach(h3 => {
         h3.style.color = currentTheme.primaryColor;
     });
@@ -923,6 +161,53 @@ function updateTheme() {
     generatePreview();
 }
 
+// Setup visibility toggles
+function setupVisibilityToggles() {
+    const sections = [
+        { id: 'work', element: document.getElementById('workExperienceContainer')?.closest('.section-card') },
+        { id: 'education', element: document.getElementById('educationContainer')?.closest('.section-card') },
+        { id: 'projects', element: document.getElementById('projectsContainer')?.closest('.section-card') },
+        { id: 'skills', element: document.querySelector('.section-card[data-tooltip="Your skill sets"]') },
+        { id: 'interests', element: document.getElementById('interestsContainer')?.closest('.section-card') },
+        { id: 'certifications', element: document.getElementById('certificationsContainer')?.closest('.section-card') },
+        { id: 'declaration', element: document.getElementById('declaration')?.closest('.section-card') }
+    ];
+
+    sections.forEach(section => {
+        if (section.element) {
+            const header = section.element.querySelector('.section-header');
+            if (header) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'visibility-toggle-btn';
+                toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
+                toggleBtn.title = 'Toggle visibility in preview';
+                toggleBtn.onclick = () => toggleSectionVisibility(section.id, toggleBtn);
+                
+                const controls = header.querySelector('.section-controls');
+                if (controls) {
+                    controls.insertBefore(toggleBtn, controls.firstChild);
+                } else {
+                    header.appendChild(toggleBtn);
+                }
+            }
+        }
+    });
+}
+
+function toggleSectionVisibility(sectionId, button) {
+    sectionVisibility[sectionId] = !sectionVisibility[sectionId];
+    
+    if (sectionVisibility[sectionId]) {
+        button.innerHTML = '<i class="fas fa-eye"></i>';
+        button.classList.remove('hidden');
+    } else {
+        button.innerHTML = '<i class="fas fa-eye-slash"></i>';
+        button.classList.add('hidden');
+    }
+    
+    generatePreview();
+}
+
 // Theme panel controls
 document.getElementById('themeBtn').addEventListener('click', function() {
     document.getElementById('themeModal').classList.add('show');
@@ -934,17 +219,12 @@ function closeThemePanel() {
 
 // Make theme panel draggable
 function setupDraggableThemePanel() {
-    const modal = document.getElementById('themeModal');
     const panel = document.querySelector('.theme-panel');
     const header = document.querySelector('.theme-header');
     
     let isDragging = false;
-    let currentX;
-    let currentY;
-    let initialX;
-    let initialY;
-    let xOffset = 0;
-    let yOffset = 0;
+    let currentX, currentY, initialX, initialY;
+    let xOffset = 0, yOffset = 0;
     
     header.addEventListener('mousedown', dragStart);
     document.addEventListener('mousemove', drag);
@@ -952,13 +232,10 @@ function setupDraggableThemePanel() {
     
     function dragStart(e) {
         if (e.target === header || header.contains(e.target)) {
-            if (e.target.classList.contains('btn-close-modal') || e.target.closest('.btn-close-modal')) {
-                return;
-            }
+            if (e.target.classList.contains('btn-close-modal') || e.target.closest('.btn-close-modal')) return;
             initialX = e.clientX - xOffset;
             initialY = e.clientY - yOffset;
             isDragging = true;
-            panel.classList.add('dragging');
         }
     }
     
@@ -969,14 +246,12 @@ function setupDraggableThemePanel() {
             currentY = e.clientY - initialY;
             xOffset = currentX;
             yOffset = currentY;
-            
             panel.style.transform = `translate(${currentX}px, ${currentY}px)`;
         }
     }
     
     function dragEnd() {
         isDragging = false;
-        panel.classList.remove('dragging');
     }
 }
 
@@ -1014,9 +289,15 @@ function setupValidation() {
         const input = document.getElementById(id);
         if (input) {
             input.addEventListener('input', function() {
-                validateInput(input, inputs[id]);
+                if (id === 'name') {
+                    const cleaned = this.value.replace(/[^a-zA-Z\s]/g, '');
+                    if (this.value !== cleaned) this.value = cleaned;
+                } else if (id === 'phone') {
+                    const cleaned = this.value.replace(/[^0-9+\-\s()]/g, '');
+                    if (this.value !== cleaned) this.value = cleaned;
+                }
+                validateInput(this, inputs[id]);
             });
-            
             input.addEventListener('blur', function() {
                 strictValidate(input, id);
             });
@@ -1027,8 +308,8 @@ function setupValidation() {
 function validateInput(input, pattern) {
     if (!input.value) {
         input.classList.remove('error');
-        const errorDiv = input.closest('.input-with-clear').nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error-message')) {
+        const errorDiv = input.closest('.input-with-clear')?.nextElementSibling;
+        if (errorDiv?.classList.contains('error-message')) {
             errorDiv.textContent = '';
         }
         return true;
@@ -1039,8 +320,8 @@ function validateInput(input, pattern) {
         return false;
     } else {
         input.classList.remove('error');
-        const errorDiv = input.closest('.input-with-clear').nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error-message')) {
+        const errorDiv = input.closest('.input-with-clear')?.nextElementSibling;
+        if (errorDiv?.classList.contains('error-message')) {
             errorDiv.textContent = '';
         }
         return true;
@@ -1068,16 +349,16 @@ function strictValidate(input, type) {
             linkedin: 'Enter a valid LinkedIn URL',
             github: 'Enter a valid GitHub URL'
         };
-        const errorDiv = input.closest('.input-with-clear').nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error-message')) {
+        const errorDiv = input.closest('.input-with-clear')?.nextElementSibling;
+        if (errorDiv?.classList.contains('error-message')) {
             errorDiv.textContent = messages[type];
         }
         return false;
     }
     
     input.classList.remove('error');
-    const errorDiv = input.closest('.input-with-clear').nextElementSibling;
-    if (errorDiv && errorDiv.classList.contains('error-message')) {
+    const errorDiv = input.closest('.input-with-clear')?.nextElementSibling;
+    if (errorDiv?.classList.contains('error-message')) {
         errorDiv.textContent = '';
     }
     return true;
@@ -1089,7 +370,7 @@ function clearField(fieldId) {
         field.value = '';
         field.classList.remove('error');
         const errorDiv = field.closest('.input-with-clear')?.nextElementSibling;
-        if (errorDiv && errorDiv.classList.contains('error-message')) {
+        if (errorDiv?.classList.contains('error-message')) {
             errorDiv.textContent = '';
         }
     }
@@ -1139,10 +420,13 @@ function addWorkExperience() {
     item.className = 'experience-item';
     item.id = `work-${workExperienceCount}`;
     item.setAttribute('data-index', workExperienceCount);
+    
+    const showRemove = workExperienceCount > 1;
+    
     item.innerHTML = `
-        <button class="remove-item" onclick="removeItem('work-${workExperienceCount}')">
+        ${showRemove ? `<button class="remove-item" onclick="removeItem('work-${workExperienceCount}')">
             <i class="fas fa-times"></i> Remove
-        </button>
+        </button>` : ''}
         <div class="mb-3">
             <label class="form-label">Company Name</label>
             <div class="input-with-clear">
@@ -1155,17 +439,17 @@ function addWorkExperience() {
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label class="form-label">Start Date</label>
-                <input type="date" class="form-control work-start" onchange="calculateWorkDuration('work-${workExperienceCount}')" data-tooltip="Select start date">
+                <input type="date" class="form-control work-start" onchange="calculateWorkDuration('work-${workExperienceCount}')" data-tooltip="Start date">
             </div>
             <div class="col-md-6 mb-3">
-                <label class="form-label">End Date (Leave empty for present)</label>
-                <input type="date" class="form-control work-end" onchange="calculateWorkDuration('work-${workExperienceCount}')" data-tooltip="Select end date or leave empty">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control work-end" onchange="calculateWorkDuration('work-${workExperienceCount}')" data-tooltip="End date (or leave empty for Present)">
             </div>
         </div>
         <div class="mb-3">
             <label class="form-label">Job Title</label>
             <div class="input-with-clear">
-                <input type="text" class="form-control work-title" placeholder="Job Title" data-tooltip="Enter your job title">
+                <input type="text" class="form-control work-title" placeholder="Job Title" data-tooltip="Your role">
                 <button class="clear-btn" onclick="clearItemField(this)">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1215,14 +499,17 @@ function addEducation() {
     item.className = 'education-item';
     item.id = `education-${educationCount}`;
     item.setAttribute('data-index', educationCount);
+    
+    const showRemove = educationCount > 1;
+    
     item.innerHTML = `
-        <button class="remove-item" onclick="removeItem('education-${educationCount}')">
+        ${showRemove ? `<button class="remove-item" onclick="removeItem('education-${educationCount}')">
             <i class="fas fa-times"></i> Remove
-        </button>
+        </button>` : ''}
         <div class="mb-3">
             <label class="form-label">College/University Name</label>
             <div class="input-with-clear">
-                <input type="text" class="form-control edu-institution" placeholder="Institution Name" data-tooltip="Enter institution name">
+                <input type="text" class="form-control edu-institution" placeholder="Institution Name" data-tooltip="Institution name">
                 <button class="clear-btn" onclick="clearItemField(this)">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1231,7 +518,7 @@ function addEducation() {
         <div class="mb-3">
             <label class="form-label">Degree/Course</label>
             <div class="input-with-clear">
-                <input type="text" class="form-control edu-degree" placeholder="Degree" data-tooltip="Enter your degree or course">
+                <input type="text" class="form-control edu-degree" placeholder="Degree" data-tooltip="Degree/program">
                 <button class="clear-btn" onclick="clearItemField(this)">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1239,22 +526,22 @@ function addEducation() {
         </div>
         <div class="mb-3">
             <label class="form-label">Year of Completion</label>
-            <input type="number" class="form-control edu-year" placeholder="2024" min="1950" max="2050" data-tooltip="Enter year of completion">
+            <input type="number" class="form-control edu-year" placeholder="2024" min="1950" max="2050" data-tooltip="Graduation year">
         </div>
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label class="form-label">Percentage (if applicable)</label>
+                <label class="form-label">Percentage</label>
                 <div class="input-with-clear">
-                    <input type="text" class="form-control edu-percentage" placeholder="e.g., 85%" data-tooltip="Enter percentage">
+                    <input type="text" class="form-control edu-percentage" placeholder="e.g., 85%" data-tooltip="Enter percentage if applicable">
                     <button class="clear-btn" onclick="clearItemField(this)">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
             </div>
             <div class="col-md-6 mb-3">
-                <label class="form-label">GPA (if applicable)</label>
+                <label class="form-label">GPA</label>
                 <div class="input-with-clear">
-                    <input type="text" class="form-control edu-gpa" placeholder="e.g., 3.8/4.0" data-tooltip="Enter GPA">
+                    <input type="text" class="form-control edu-gpa" placeholder="e.g., 3.8/4.0" data-tooltip="Enter GPA if applicable">
                     <button class="clear-btn" onclick="clearItemField(this)">
                         <i class="fas fa-times"></i>
                     </button>
@@ -1273,14 +560,17 @@ function addProject() {
     item.className = 'project-item';
     item.id = `project-${projectCount}`;
     item.setAttribute('data-index', projectCount);
+    
+    const showRemove = projectCount > 1;
+    
     item.innerHTML = `
-        <button class="remove-item" onclick="removeItem('project-${projectCount}')">
+        ${showRemove ? `<button class="remove-item" onclick="removeItem('project-${projectCount}')">
             <i class="fas fa-times"></i> Remove
-        </button>
+        </button>` : ''}
         <div class="mb-3">
             <label class="form-label">Project Name</label>
             <div class="input-with-clear">
-                <input type="text" class="form-control proj-name" placeholder="Project Name" data-tooltip="Enter project name">
+                <input type="text" class="form-control proj-name" placeholder="Project Name" data-tooltip="Title of project">
                 <button class="clear-btn" onclick="clearItemField(this)">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1289,7 +579,7 @@ function addProject() {
         <div class="mb-3">
             <label class="form-label">Description</label>
             <div class="input-with-clear">
-                <textarea class="form-control proj-desc" rows="2" placeholder="Project Description" data-tooltip="Describe your project"></textarea>
+                <textarea class="form-control proj-desc" rows="2" placeholder="Project Description" data-tooltip="Brief summary"></textarea>
                 <button class="clear-btn" onclick="clearItemField(this)">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1298,16 +588,16 @@ function addProject() {
         <div class="mb-3">
             <label class="form-label">Project Link</label>
             <div class="input-with-clear">
-                <input type="url" class="form-control proj-link" placeholder="https://project-link.com" data-tooltip="Enter project URL">
+                <input type="url" class="form-control proj-link" placeholder="https://project-link.com" data-tooltip="Web link">
                 <button class="clear-btn" onclick="clearItemField(this)">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
         </div>
         <div class="mb-3">
-            <label class="form-label">Company/Organization (Optional)</label>
+            <label class="form-label">Company/Organization</label>
             <div class="input-with-clear">
-                <input type="text" class="form-control proj-company" placeholder="Company Name" data-tooltip="Enter company if applicable">
+                <input type="text" class="form-control proj-company" placeholder="Company Name" data-tooltip="Client/organization">
                 <button class="clear-btn" onclick="clearItemField(this)">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1338,15 +628,19 @@ function addSkill(type) {
         placeholder = 'e.g., JavaScript, Python, React';
     }
     
+    const showRemove = (type === 'personal' && count > 1) || 
+                       (type === 'professional' && count > 1) || 
+                       (type === 'technical' && count > 1);
+    
     const item = document.createElement('div');
     item.className = 'skill-item mb-2';
     item.id = `skill-${type}-${count}`;
     item.innerHTML = `
         <div class="input-with-clear">
             <input type="text" class="form-control skill-input-${type}" placeholder="${placeholder}" data-tooltip="${placeholder}" oninput="updateSkillList('${type}')">
-            <button class="clear-btn" onclick="removeItem('skill-${type}-${count}'); updateSkillList('${type}')">
+            ${showRemove ? `<button class="clear-btn" onclick="removeItem('skill-${type}-${count}'); updateSkillList('${type}')">
                 <i class="fas fa-times"></i>
-            </button>
+            </button>` : ''}
         </div>
     `;
     container.appendChild(item);
@@ -1388,12 +682,15 @@ function addInterest() {
     const item = document.createElement('div');
     item.className = 'interest-item mb-2';
     item.id = `interest-${interestCount}`;
+    
+    const showRemove = interestCount > 1;
+    
     item.innerHTML = `
         <div class="input-with-clear">
-            <input type="text" class="form-control" placeholder="e.g., Reading, Photography, Traveling" data-tooltip="Enter your interests">
-            <button class="clear-btn" onclick="removeItem('interest-${interestCount}')">
+            <input type="text" class="form-control" placeholder="e.g., Reading, Photography, Traveling" data-tooltip="List your hobbies">
+            ${showRemove ? `<button class="clear-btn" onclick="removeItem('interest-${interestCount}')">
                 <i class="fas fa-times"></i>
-            </button>
+            </button>` : ''}
         </div>
     `;
     container.appendChild(item);
@@ -1406,12 +703,15 @@ function addCertification() {
     const item = document.createElement('div');
     item.className = 'certification-item mb-2';
     item.id = `certification-${certificationCount}`;
+    
+    const showRemove = certificationCount > 1;
+    
     item.innerHTML = `
         <div class="input-with-clear">
-            <input type="text" class="form-control" placeholder="e.g., AWS Certified Solutions Architect" data-tooltip="Enter certification name">
-            <button class="clear-btn" onclick="removeItem('certification-${certificationCount}')">
+            <input type="text" class="form-control" placeholder="e.g., AWS Certified Solutions Architect" data-tooltip="Add course/certificate details">
+            ${showRemove ? `<button class="clear-btn" onclick="removeItem('certification-${certificationCount}')">
                 <i class="fas fa-times"></i>
-            </button>
+            </button>` : ''}
         </div>
     `;
     container.appendChild(item);
@@ -1451,6 +751,13 @@ function moveSectionDown(containerId) {
     }
 }
 
+// Get current date formatted
+function getCurrentDate() {
+    const date = new Date();
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+}
+
 // Generate Preview
 function generatePreview() {
     const photo = document.querySelector('#photoPreview img')?.src || '';
@@ -1479,7 +786,7 @@ function generatePreview() {
         </div>
     `;
     
-    if (objective) {
+    if (objective && sectionVisibility.objective) {
         html += `
             <div class="resume-section">
                 <div class="resume-section-title">Career Objective</div>
@@ -1489,163 +796,186 @@ function generatePreview() {
     }
     
     // Work Experience
-    const workItems = document.querySelectorAll('.experience-item');
-    if (workItems.length > 0) {
-        let hasContent = false;
-        let workHtml = '<div class="resume-section"><div class="resume-section-title">Work Experience</div>';
-        
-        workItems.forEach(item => {
-            const company = item.querySelector('.work-company').value;
-            const title = item.querySelector('.work-title').value;
-            const start = item.querySelector('.work-start').value;
-            const end = item.querySelector('.work-end').value;
-            const durationDiv = item.querySelector('.duration-display');
-            const duration = durationDiv.style.display !== 'none' ? durationDiv.textContent : '';
+    if (sectionVisibility.work) {
+        const workItems = document.querySelectorAll('.experience-item');
+        if (workItems.length > 0) {
+            let hasContent = false;
+            let workHtml = '<div class="resume-section"><div class="resume-section-title">Work Experience</div>';
             
-            if (company || title || start) {
-                hasContent = true;
-                workHtml += `
-                    <div class="resume-item">
-                        ${title ? `<div class="resume-item-title">${title}</div>` : ''}
-                        ${company ? `<div class="resume-item-subtitle">${company}</div>` : ''}
-                        ${start ? `<div class="resume-item-date">${formatDate(start)} - ${end ? formatDate(end) : 'Present'}${duration ? ' • ' + duration : ''}</div>` : ''}
-                    </div>
-                `;
-            }
-        });
-        
-        workHtml += '</div>';
-        if (hasContent) html += workHtml;
+            workItems.forEach(item => {
+                const company = item.querySelector('.work-company').value;
+                const title = item.querySelector('.work-title').value;
+                const start = item.querySelector('.work-start').value;
+                const end = item.querySelector('.work-end').value;
+                const durationDiv = item.querySelector('.duration-display');
+                const duration = durationDiv.style.display !== 'none' ? durationDiv.textContent : '';
+                
+                if (company || title || start) {
+                    hasContent = true;
+                    workHtml += `
+                        <div class="resume-item">
+                            ${title ? `<div class="resume-item-title">${title}</div>` : ''}
+                            ${company ? `<div class="resume-item-subtitle">${company}</div>` : ''}
+                            ${start ? `<div class="resume-item-date">${formatDate(start)} - ${end ? formatDate(end) : 'Present'}${duration ? ' • ' + duration : ''}</div>` : ''}
+                        </div>
+                    `;
+                }
+            });
+            
+            workHtml += '</div>';
+            if (hasContent) html += workHtml;
+        }
     }
     
     // Education
-    const eduItems = document.querySelectorAll('.education-item');
-    if (eduItems.length > 0) {
-        let hasContent = false;
-        let eduHtml = '<div class="resume-section"><div class="resume-section-title">Education</div>';
-        
-        eduItems.forEach(item => {
-            const institution = item.querySelector('.edu-institution').value;
-            const degree = item.querySelector('.edu-degree').value;
-            const year = item.querySelector('.edu-year').value;
-            const percentage = item.querySelector('.edu-percentage').value;
-            const gpa = item.querySelector('.edu-gpa').value;
+    if (sectionVisibility.education) {
+        const eduItems = document.querySelectorAll('.education-item');
+        if (eduItems.length > 0) {
+            let hasContent = false;
+            let eduHtml = '<div class="resume-section"><div class="resume-section-title">Education</div>';
             
-            if (institution || degree) {
-                hasContent = true;
-                let gradeInfo = '';
-                if (percentage && gpa) {
-                    gradeInfo = `${percentage} | ${gpa}`;
-                } else if (percentage) {
-                    gradeInfo = percentage;
-                } else if (gpa) {
-                    gradeInfo = gpa;
-                }
+            eduItems.forEach(item => {
+                const institution = item.querySelector('.edu-institution').value;
+                const degree = item.querySelector('.edu-degree').value;
+                const year = item.querySelector('.edu-year').value;
+                const percentage = item.querySelector('.edu-percentage').value;
+                const gpa = item.querySelector('.edu-gpa').value;
                 
-                eduHtml += `
-                    <div class="resume-item">
-                        <div class="resume-item-title">${degree || 'Degree'}</div>
-                        <div class="resume-item-subtitle">${institution || 'Institution'}</div>
-                        ${year || gradeInfo ? `<div class="resume-item-date">${year ? year : ''}${gradeInfo ? ' • ' + gradeInfo : ''}</div>` : ''}
-                    </div>
-                `;
-            }
-        });
-        
-        eduHtml += '</div>';
-        if (hasContent) html += eduHtml;
+                if (institution || degree) {
+                    hasContent = true;
+                    let gradeInfo = '';
+                    if (percentage && gpa) {
+                        gradeInfo = `${percentage} | ${gpa}`;
+                    } else if (percentage) {
+                        gradeInfo = percentage;
+                    } else if (gpa) {
+                        gradeInfo = gpa;
+                    }
+                    
+                    eduHtml += `
+                        <div class="resume-item">
+                            <div class="resume-item-title">${degree || 'Degree'}</div>
+                            <div class="resume-item-subtitle">${institution || 'Institution'}</div>
+                            ${year || gradeInfo ? `<div class="resume-item-date">${year ? year : ''}${gradeInfo ? ' • ' + gradeInfo : ''}</div>` : ''}
+                        </div>
+                    `;
+                }
+            });
+            
+            eduHtml += '</div>';
+            if (hasContent) html += eduHtml;
+        }
     }
     
     // Projects
-    const projItems = document.querySelectorAll('.project-item');
-    if (projItems.length > 0) {
-        let hasContent = false;
-        let projHtml = '<div class="resume-section"><div class="resume-section-title">Projects</div>';
-        
-        projItems.forEach(item => {
-            const projName = item.querySelector('.proj-name').value;
-            const projDesc = item.querySelector('.proj-desc').value;
-            const projLink = item.querySelector('.proj-link').value;
-            const projCompany = item.querySelector('.proj-company').value;
+    if (sectionVisibility.projects) {
+        const projItems = document.querySelectorAll('.project-item');
+        if (projItems.length > 0) {
+            let hasContent = false;
+            let projHtml = '<div class="resume-section"><div class="resume-section-title">Projects</div>';
             
-            if (projName || projDesc) {
-                hasContent = true;
-                projHtml += `
-                    <div class="resume-item">
-                        <div class="resume-item-title">${projName || 'Project Name'}</div>
-                        ${projCompany ? `<div class="resume-item-subtitle">${projCompany}</div>` : ''}
-                        ${projDesc ? `<div class="resume-item-description">${projDesc}</div>` : ''}
-                        ${projLink ? `<div class="resume-item-date"><i class="fas fa-link"></i> <a href="${projLink}" target="_blank">Project Link</a></div>` : ''}
-                    </div>
-                `;
-            }
-        });
-        
-        projHtml += '</div>';
-        if (hasContent) html += projHtml;
+            projItems.forEach(item => {
+                const projName = item.querySelector('.proj-name').value;
+                const projDesc = item.querySelector('.proj-desc').value;
+                const projLink = item.querySelector('.proj-link').value;
+                const projCompany = item.querySelector('.proj-company').value;
+                
+                if (projName || projDesc) {
+                    hasContent = true;
+                    projHtml += `
+                        <div class="resume-item">
+                            <div class="resume-item-title">${projName || 'Project Name'}</div>
+                            ${projCompany ? `<div class="resume-item-subtitle">${projCompany}</div>` : ''}
+                            ${projDesc ? `<div class="resume-item-description">${projDesc}</div>` : ''}
+                            ${projLink ? `<div class="resume-item-date"><i class="fas fa-link"></i> <a href="${projLink}" target="_blank">Project Link</a></div>` : ''}
+                        </div>
+                    `;
+                }
+            });
+            
+            projHtml += '</div>';
+            if (hasContent) html += projHtml;
+        }
     }
     
     // Skills
-    const personalSkills = Array.from(document.querySelectorAll('#personalSkillsContainer input')).map(i => i.value).filter(v => v);
-    const professionalSkills = Array.from(document.querySelectorAll('#professionalSkillsContainer input')).map(i => i.value).filter(v => v);
-    const technicalSkills = Array.from(document.querySelectorAll('#technicalSkillsContainer input')).map(i => i.value).filter(v => v);
-    
-    if (personalSkills.length || professionalSkills.length || technicalSkills.length) {
-        html += '<div class="resume-section"><div class="resume-section-title">Skills</div>';
+    if (sectionVisibility.skills) {
+        const personalSkills = Array.from(document.querySelectorAll('#personalSkillsContainer input')).map(i => i.value).filter(v => v);
+        const professionalSkills = Array.from(document.querySelectorAll('#professionalSkillsContainer input')).map(i => i.value).filter(v => v);
+        const technicalSkills = Array.from(document.querySelectorAll('#technicalSkillsContainer input')).map(i => i.value).filter(v => v);
         
-        if (personalSkills.length) {
-            html += '<div class="mb-3"><strong>Personal Skills:</strong><div class="resume-skills-grid">';
-            personalSkills.forEach(skill => {
-                html += `<div class="resume-skill-item">${skill}</div>`;
-            });
-            html += '</div></div>';
+        if (personalSkills.length || professionalSkills.length || technicalSkills.length) {
+            html += '<div class="resume-section"><div class="resume-section-title">Skills</div>';
+            
+            if (personalSkills.length) {
+                html += '<div class="mb-3"><strong>Personal Skills:</strong><ul class="resume-skills-list">';
+                personalSkills.forEach(skill => {
+                    html += `<li>${skill}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            if (professionalSkills.length) {
+                html += '<div class="mb-3"><strong>Professional Skills:</strong><ul class="resume-skills-list">';
+                professionalSkills.forEach(skill => {
+                    html += `<li>${skill}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            if (technicalSkills.length) {
+                html += '<div class="mb-3"><strong>Technical Skills:</strong><ul class="resume-skills-list">';
+                technicalSkills.forEach(skill => {
+                    html += `<li>${skill}</li>`;
+                });
+                html += '</ul></div>';
+            }
+            
+            html += '</div>';
         }
-        
-        if (professionalSkills.length) {
-            html += '<div class="mb-3"><strong>Professional Skills:</strong><div class="resume-skills-grid">';
-            professionalSkills.forEach(skill => {
-                html += `<div class="resume-skill-item">${skill}</div>`;
-            });
-            html += '</div></div>';
-        }
-        
-        if (technicalSkills.length) {
-            html += '<div class="mb-3"><strong>Technical Skills:</strong><div class="resume-skills-grid">';
-            technicalSkills.forEach(skill => {
-                html += `<div class="resume-skill-item">${skill}</div>`;
-            });
-            html += '</div></div>';
-        }
-        
-        html += '</div>';
     }
     
-    // Interests
-    const interests = Array.from(document.querySelectorAll('#interestsContainer input')).map(i => i.value).filter(v => v);
-    if (interests.length) {
-        html += '<div class="resume-section"><div class="resume-section-title">Interests</div>';
-        html += '<div class="resume-skills-grid">';
-        interests.forEach(interest => {
-            html += `<div class="resume-skill-item">${interest}</div>`;
-        });
-        html += '</div></div>';
+    // Interests (render as bulleted list)
+    if (sectionVisibility.interests) {
+        const interests = Array.from(document.querySelectorAll('#interestsContainer input')).map(i => i.value).filter(v => v);
+        if (interests.length) {
+            html += '<div class="resume-section"><div class="resume-section-title">Interests</div>';
+            html += '<ul class="resume-interests-list">';
+            interests.forEach(interest => {
+                html += `<li>${interest}</li>`;
+            });
+            html += '</ul></div>';
+        }
     }
     
     // Certifications
-    const certifications = Array.from(document.querySelectorAll('#certificationsContainer input')).map(i => i.value).filter(v => v);
-    if (certifications.length) {
-        html += '<div class="resume-section"><div class="resume-section-title">Certifications</div>';
-        certifications.forEach(cert => {
-            html += `<div class="resume-item"><div class="resume-item-title">${cert}</div></div>`;
-        });
-        html += '</div>';
+    if (sectionVisibility.certifications) {
+        const certifications = Array.from(document.querySelectorAll('#certificationsContainer input')).map(i => i.value).filter(v => v);
+        if (certifications.length) {
+            html += '<div class="resume-section"><div class="resume-section-title">Certifications</div>';
+            certifications.forEach(cert => {
+                html += `<div class="resume-item"><div class="resume-item-title">${cert}</div></div>`;
+            });
+            html += '</div>';
+        }
     }
     
-    // Declaration
-    if (declaration) {
+    // Declaration with signature line and date
+    if (declaration && sectionVisibility.declaration) {
         html += `
             <div class="resume-footer">
-                <strong>Declaration:</strong> I hereby declare that all the information provided above is true and accurate to the best of my knowledge.
+                <div style="text-align: left; margin-bottom: 1rem;">
+                    <strong>Declaration:</strong> I hereby declare that all the information provided above is true and accurate to the best of my knowledge.
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="text-align: left;">
+                        <div style="margin-bottom: 0.5rem;">Date: ${getCurrentDate()}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="border-bottom: 1px solid white; width: 200px; margin-bottom: 0.25rem;"></div>
+                        <div style="font-size: 0.85em;">Signature</div>
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -1663,59 +993,76 @@ function formatDate(dateStr) {
 // Download PDF using html2canvas and jsPDF
 function downloadPDF() {
     generatePreview();
-    
+
     const resumeElement = document.getElementById('resumePreview');
     const originalWidth = resumeElement.style.width;
     const originalMaxWidth = resumeElement.style.maxWidth;
-    
-    // Set a fixed width for consistency
+    const originalTransform = resumeElement.style.transform;
+    const originalTransformOrigin = resumeElement.style.transformOrigin;
+
+    // force width to A4 and compute scale to fit one page
     resumeElement.style.width = '210mm';
     resumeElement.style.maxWidth = '210mm';
-    
-    // Use html2canvas to capture the element
+
+    // helper: compute pixel height of 297mm on this device
+    const mm297 = (() => {
+        const div = document.createElement('div');
+        div.style.position = 'absolute';
+        div.style.visibility = 'hidden';
+        div.style.height = '297mm';
+        document.body.appendChild(div);
+        const h = div.getBoundingClientRect().height;
+        document.body.removeChild(div);
+        return h;
+    })();
+
+    // measure content height and determine scale
+    const contentHeight = resumeElement.getBoundingClientRect().height;
+    const scale = contentHeight > 0 ? Math.min(1, mm297 / contentHeight) : 1;
+
+    resumeElement.style.transformOrigin = 'top left';
+    resumeElement.style.transform = `scale(${scale})`;
+
+    // increase canvas scale for better quality while respecting transform
+    const canvasScale = Math.max(2, Math.round(window.devicePixelRatio || 1));
+
     html2canvas(resumeElement, {
-        scale: 2,
+        scale: canvasScale,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff'
     }).then(canvas => {
-        // Restore original width
+        // restore styles
         resumeElement.style.width = originalWidth;
         resumeElement.style.maxWidth = originalMaxWidth;
-        
+        resumeElement.style.transform = originalTransform;
+        resumeElement.style.transformOrigin = originalTransformOrigin;
+
         const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
-        
-        // A4 dimensions in mm
+
         const pdfWidth = 210;
         const pdfHeight = 297;
-        
-        // Calculate image dimensions
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-        
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        
-        // If content fits on one page
-        if (imgHeight <= pdfHeight) {
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+        // compute image size in mm based on canvas aspect ratio
+        let imgWidth = pdfWidth;
+        let imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        // if image too tall, scale down to fit one page
+        if (imgHeight > pdfHeight) {
+            const downscale = pdfHeight / imgHeight;
+            imgWidth = imgWidth * downscale;
+            imgHeight = pdfHeight;
+            const xOffset = (pdfWidth - imgWidth) / 2;
+
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            pdf.addImage(imgData, 'PNG', xOffset, 0, imgWidth, imgHeight);
+            pdf.save(`resume_${new Date().getTime()}.pdf`);
         } else {
-            // Multiple pages needed
-            let heightLeft = imgHeight;
-            let position = 0;
-            
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight;
-            
-            while (heightLeft > 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pdfHeight;
-            }
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            pdf.save(`resume_${new Date().getTime()}.pdf`);
         }
-        
-        pdf.save(`resume_${new Date().getTime()}.pdf`);
     });
 }
 
@@ -1723,13 +1070,30 @@ function downloadPDF() {
 function downloadWord() {
     generatePreview();
     
-    // Get the resume content
+    // clone preview and compute scale to fit one A4 page when opened in Word
     const resumeContent = document.getElementById('resumePreview').cloneNode(true);
-    
-    // Remove any unwanted elements
     const unwantedElements = resumeContent.querySelectorAll('script, style, .no-print');
     unwantedElements.forEach(el => el.remove());
-    
+
+    // measure on-screen preview height in pixels for 297mm mapping
+    const mm297 = (() => {
+        const div = document.createElement('div');
+        div.style.position = 'absolute';
+        div.style.visibility = 'hidden';
+        div.style.height = '297mm';
+        document.body.appendChild(div);
+        const h = div.getBoundingClientRect().height;
+        document.body.removeChild(div);
+        return h;
+    })();
+
+    const previewEl = document.getElementById('resumePreview');
+    const contentHeight = previewEl.getBoundingClientRect().height;
+    const scale = contentHeight > 0 ? Math.min(1, mm297 / contentHeight) : 1;
+
+    // wrap content in container and apply scale so Word displays a single page similar to preview
+    const wrappedHtml = `<div style="width:210mm; transform-origin:top left; transform: scale(${scale});">${resumeContent.innerHTML}</div>`;
+
     const htmlContent = `
         <!DOCTYPE html>
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -1746,68 +1110,41 @@ function downloadWord() {
             </xml>
             <![endif]-->
             <style>
-                * { 
-                    margin: 0; 
-                    padding: 0; 
-                    box-sizing: border-box; 
-                }
-                @page {
-                    size: A4;
-                    margin: 0.5in;
-                }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                @page { size: A4; margin: 0.5in; }
                 body { 
                     font-family: ${currentTheme.fontFamily}; 
                     font-size: ${currentTheme.fontSize}; 
                     color: #1f2937;
                     line-height: 1.4;
-                    margin: 0;
-                    padding: 0;
                 }
                 .resume-header {
                     background-color: ${currentTheme.primaryColor};
                     color: white;
-                    padding: 8px 12px;
-                    margin-bottom: 8px;
-                    display: block;
+                    padding: 15px 20px;
+                    margin-bottom: 15px;
+                    display: table;
                     width: 100%;
                 }
                 .resume-header-photo {
-                    display: inline-block;
+                    display: table-cell;
                     vertical-align: middle;
-                    padding-right: 10px;
-                    margin-right: 10px;
+                    padding-right: 15px;
                 }
                 .resume-header-photo img {
-                    width: 50px;
-                    height: 50px;
-                    border-radius: 25px;
-                    border: 2px solid white;
+                    width: 70px;
+                    height: 70px;
+                    border-radius: 35px;
+                    border: 3px solid white;
                 }
                 .resume-header-content {
-                    display: inline-block;
+                    display: table-cell;
                     vertical-align: middle;
                 }
-                .resume-name { 
-                    font-size: 16px; 
-                    font-weight: bold; 
-                    margin: 0 0 3px 0; 
-                    color: white; 
-                    line-height: 1.2;
-                }
-                .resume-contact { 
-                    color: white;
-                    font-size: 10px;
-                    margin: 0;
-                    line-height: 1.3;
-                }
-                .resume-contact span { 
-                    display: inline-block; 
-                    margin-right: 10px; 
-                }
-                .resume-section { 
-                    margin-bottom: 12px; 
-                    page-break-inside: avoid; 
-                }
+                .resume-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: white; }
+                .resume-contact { color: white; font-size: 11px; }
+                .resume-contact span { display: inline-block; margin-right: 12px; }
+                .resume-section { margin-bottom: 12px; page-break-inside: avoid; }
                 .resume-section-title {
                     font-size: 15px;
                     font-weight: bold;
@@ -1816,31 +1153,32 @@ function downloadWord() {
                     padding-bottom: 3px;
                     margin-bottom: 8px;
                 }
-                .resume-item { 
-                    margin-bottom: 10px; 
-                    page-break-inside: avoid; 
+                .resume-item { margin-bottom: 10px; page-break-inside: avoid; }
+                .resume-item-title { font-weight: bold; color: #374151; font-size: ${currentTheme.fontSize}; }
+                .resume-item-subtitle { color: #6b7280; font-size: 12px; }
+                .resume-item-date { color: #9ca3af; font-size: 11px; }
+                .resume-item-description { margin-top: 3px; color: #4b5563; font-size: 12px; }
+                .resume-skills-list {
+                    list-style: disc;
+                    margin: 5px 0 0 20px;
+                    padding: 0;
                 }
-                .resume-item-title { 
-                    font-weight: bold; 
-                    color: #374151; 
-                    font-size: ${currentTheme.fontSize};
-                }
-                .resume-item-subtitle { 
-                    color: #6b7280; 
+                .resume-skills-list li {
+                    margin-bottom: 3px;
+                    color: #374151;
                     font-size: 12px;
                 }
-                .resume-item-date { 
-                    color: #9ca3af; 
-                    font-size: 11px; 
+                .resume-interests-list {
+                    list-style: disc;
+                    margin: 5px 0 0 20px;
+                    padding: 0;
                 }
-                .resume-item-description { 
-                    margin-top: 3px; 
-                    color: #4b5563; 
+                .resume-interests-list li {
+                    margin-bottom: 3px;
+                    color: #374151;
                     font-size: 12px;
                 }
-                .resume-skills-grid { 
-                    margin-top: 5px;
-                }
+                .resume-skills-grid { margin-top: 5px; }
                 .resume-skill-item { 
                     background-color: #f3f4f6; 
                     padding: 4px 8px; 
@@ -1853,35 +1191,18 @@ function downloadWord() {
                     background-color: ${currentTheme.primaryColor};
                     color: white;
                     padding: 10px 15px;
-                    text-align: center;
                     margin-top: 15px;
                     font-size: 11px;
                 }
-                .mb-3 {
-                    margin-bottom: 8px;
-                }
-                strong {
-                    font-weight: bold;
-                    color: #374151;
-                    font-size: 12px;
-                }
-                p {
-                    margin: 0;
-                    padding: 0;
-                    font-size: 12px;
-                    line-height: 1.4;
-                }
-                i, .fa, .fas, .fab { 
-                    display: none; 
-                }
-                a { 
-                    color: inherit; 
-                    text-decoration: none; 
-                }
+                .mb-3 { margin-bottom: 8px; }
+                strong { font-weight: bold; color: #374151; font-size: 12px; }
+                p { margin: 0; padding: 0; font-size: 12px; line-height: 1.4; }
+                i, .fa, .fas, .fab { display: none; }
+                a { color: inherit; text-decoration: none; }
             </style>
         </head>
         <body>
-            ${resumeContent.innerHTML}
+            ${wrappedHtml}
         </body>
         </html>
     `;

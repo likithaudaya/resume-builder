@@ -139,6 +139,35 @@ body {
     align-items: center;
 }
 
+.visibility-toggle-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+}
+
+.visibility-toggle-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.visibility-toggle-btn.hidden {
+    background: #ef4444;
+}
+
+.visibility-toggle-btn.hidden:hover {
+    background: #dc2626;
+}
+
 .section-move-buttons {
     display: flex;
     gap: 0.25rem;
@@ -564,6 +593,17 @@ body {
     padding: 0.5rem 0.75rem;
     border-radius: 0.375rem;
     font-size: 0.9em;
+}
+
+.resume-interests-list {
+    list-style: disc;
+    margin: 0.25rem 0 0 1rem;
+    padding: 0;
+}
+.resume-interests-list li {
+    margin-bottom: 0.25rem;
+    color: #374151;
+    font-size: 0.95em;
 }
 
 .resume-footer {

@@ -52,7 +52,7 @@
                         <div class="mb-3" data-tooltip="Enter your full name (letters only)">
                             <label class="form-label">Full Name *</label>
                             <div class="input-with-clear">
-                                <input type="text" class="form-control" id="name" placeholder="John Doe" data-tooltip="Enter your full name (letters only)">
+                                <input type="text" class="form-control" id="name" placeholder="John Doe" data-tooltip="Enter your full name (letters only)" pattern="[A-Za-z\s]+" inputmode="text" title="Letters and spaces only">
                                 <button class="clear-btn" onclick="clearField('name')">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -74,7 +74,7 @@
                         <div class="mb-3" data-tooltip="Enter phone number (numbers only)">
                             <label class="form-label">Phone Number *</label>
                             <div class="input-with-clear">
-                                <input type="tel" class="form-control" id="phone" placeholder="+1 234 567 8900" data-tooltip="Enter phone number (numbers only)">
+                                <input type="tel" class="form-control" id="phone" placeholder="+1 234 567 8900" data-tooltip="Enter phone number (numbers only)" pattern="[0-9+\-\s()]*" inputmode="tel" title="Digits, +, -, spaces and parentheses only">
                                 <button class="clear-btn" onclick="clearField('phone')">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -216,7 +216,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div>
-                                    <label class="form-label mb-0">Personal Skills</label>
+                                    <label class="form-label mb-0" data-tooltip="Soft skills">Personal Skills</label>
                                     <button class="list-view-toggle" onclick="toggleSkillList('personal')" data-tooltip="Toggle list view">
                                         <i class="fas fa-list"></i> List View
                                     </button>
@@ -232,7 +232,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div>
-                                    <label class="form-label mb-0">Professional Skills</label>
+                                    <label class="form-label mb-0" data-tooltip="Workplace skills">Professional Skills</label>
                                     <button class="list-view-toggle" onclick="toggleSkillList('professional')" data-tooltip="Toggle list view">
                                         <i class="fas fa-list"></i> List View
                                     </button>
@@ -248,7 +248,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div>
-                                    <label class="form-label mb-0">Technical Skills</label>
+                                    <label class="form-label mb-0" data-tooltip="Tech expertise">Technical Skills</label>
                                     <button class="list-view-toggle" onclick="toggleSkillList('technical')" data-tooltip="Toggle list view">
                                         <i class="fas fa-list"></i> List View
                                     </button>
@@ -265,8 +265,8 @@
 
                 <!-- Interests -->
                 <div class="section-card" data-tooltip="Your personal interests">
-                    <div class="section-header">
-                        <h3>Interests/Hobbies</h3>
+                        <div class="section-header">
+                        <h3 data-tooltip="List your hobbies">Interests/Hobbies</h3>
                         <div class="section-controls">
                             <button class="btn-icon" onclick="addInterest()" title="Add interest">
                                 <i class="fas fa-plus"></i>
@@ -278,8 +278,8 @@
 
                 <!-- Certifications -->
                 <div class="section-card" data-tooltip="Your certifications and courses">
-                    <div class="section-header">
-                        <h3>Certifications/Courses</h3>
+                        <div class="section-header">
+                        <h3 data-tooltip="Add course/certificate details">Certifications/Courses</h3>
                         <div class="section-controls">
                             <button class="btn-icon" onclick="addCertification()" title="Add certification">
                                 <i class="fas fa-plus"></i>
