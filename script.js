@@ -990,234 +990,147 @@ function formatDate(dateStr) {
     return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-// Download PDF using html2canvas and jsPDF
+// Download PDF using html2canvas and jsPDF - matches preview exactly
 function downloadPDF() {
     generatePreview();
 
-    const resumeElement = document.getElementById('resumePreview');
-    const originalWidth = resumeElement.style.width;
-    const originalMaxWidth = resumeElement.style.maxWidth;
-    const originalTransform = resumeElement.style.transform;
-    const originalTransformOrigin = resumeElement.style.transformOrigin;
+    // create offscreen clone to control exact layout and ensure header is included
+    const original = document.getElementById('resumePreview');
+    const clone = original.cloneNode(true);
 
-    // force width to A4 and compute scale to fit one page
-    resumeElement.style.width = '210mm';
-    resumeElement.style.maxWidth = '210mm';
+    // compute A4 width in pixels at 96dpi (210mm)
+    const mmToPx = mm => Math.round(mm * (96 / 25.4));
+    const a4Px = mmToPx(210);
 
-    // helper: compute pixel height of 297mm on this device
-    const mm297 = (() => {
-        const div = document.createElement('div');
-        div.style.position = 'absolute';
-        div.style.visibility = 'hidden';
-        div.style.height = '297mm';
-        document.body.appendChild(div);
-        const h = div.getBoundingClientRect().height;
-        document.body.removeChild(div);
-        return h;
-    })();
+    // apply compact inline styles to clone to avoid stylesheet interference
+    clone.style.cssText = `
+        width: ${a4Px}px !important;
+        box-sizing: border-box !important;
+        background: #ffffff !important;
+        padding: 8mm !important;
+        margin: 0 !important;
+        display: block !important;
+    `;
 
-    // measure content height and determine scale
-    const contentHeight = resumeElement.getBoundingClientRect().height;
-    const scale = contentHeight > 0 ? Math.min(1, mm297 / contentHeight) : 1;
+    // make sure header is visible and not clipped
+    const header = clone.querySelector('.resume-header');
+    if (header) {
+        header.style.cssText = `background: ${currentTheme.primaryColor} !important; color: #fff !important; padding: 8px !important; display:flex !important; align-items:center !important; gap:8px !important; height:auto !important; max-height:90px !important; overflow:hidden !important;`;
+        const img = header.querySelector('img');
+        if (img) img.style.cssText = 'width:40px !important;height:40px !important;border-radius:50% !important;object-fit:cover !important;border:2px solid #fff !important;';
+        const name = header.querySelector('.resume-name');
+        if (name) name.style.cssText = 'font-size:16px !important;margin:0 !important;';
+    }
 
-    resumeElement.style.transformOrigin = 'top left';
-    resumeElement.style.transform = `scale(${scale})`;
+    // place clone offscreen to render it accurately
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:absolute;left:-10000px;top:0;';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
 
-    // increase canvas scale for better quality while respecting transform
-    const canvasScale = Math.max(2, Math.round(window.devicePixelRatio || 1));
+    const canvasScale = Math.max(2, Math.round(window.devicePixelRatio || 2));
 
-    html2canvas(resumeElement, {
+    html2canvas(clone, {
         scale: canvasScale,
         useCORS: true,
+        backgroundColor: '#ffffff',
         logging: false,
-        backgroundColor: '#ffffff'
+        imageTimeout: 0
     }).then(canvas => {
-        // restore styles
-        resumeElement.style.width = originalWidth;
-        resumeElement.style.maxWidth = originalMaxWidth;
-        resumeElement.style.transform = originalTransform;
-        resumeElement.style.transformOrigin = originalTransformOrigin;
+        try {
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: 'px', format: [canvas.width, canvas.height] });
 
-        const imgData = canvas.toDataURL('image/png');
-        const { jsPDF } = window.jspdf;
+            // Add image at 0,0 so header is included at top
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
 
-        const pdfWidth = 210;
-        const pdfHeight = 297;
+            // If canvas height is larger than A4 (in px), create A4 sized PDF pages
+            // Create final A4 pdf in mm for saving
+            const finalPdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pdfWidthMM = finalPdf.internal.pageSize.getWidth();
+            const pxToMm = px => px * 25.4 / 96;
+            const imgWidthMM = pxToMm(canvas.width);
+            const imgHeightMM = pxToMm(canvas.height);
 
-        // compute image size in mm based on canvas aspect ratio
-        let imgWidth = pdfWidth;
-        let imgHeight = (canvas.height * pdfWidth) / canvas.width;
+            // If image fits on one A4 page height, just scale to width
+            if (imgHeightMM <= finalPdf.internal.pageSize.getHeight()) {
+                finalPdf.addImage(imgData, 'PNG', 0, 0, pdfWidthMM, (imgHeightMM * pdfWidthMM) / imgWidthMM);
+            } else {
+                // scale image to fit width and add pages by cropping the canvas
+                const pageHeightPx = Math.round((finalPdf.internal.pageSize.getHeight() * 96) / 25.4);
+                let position = 0;
+                while (position < canvas.height) {
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    pageCanvas.height = Math.min(pageHeightPx, canvas.height - position);
+                    const ctx = pageCanvas.getContext('2d');
+                    ctx.drawImage(canvas, 0, position, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+                    const pageData = pageCanvas.toDataURL('image/png');
+                    const pageHeightMM = pxToMm(pageCanvas.height);
+                    finalPdf.addImage(pageData, 'PNG', 0, 0, pdfWidthMM, pageHeightMM);
+                    position += pageHeightPx;
+                    if (position < canvas.height) finalPdf.addPage();
+                }
+            }
 
-        // if image too tall, scale down to fit one page
-        if (imgHeight > pdfHeight) {
-            const downscale = pdfHeight / imgHeight;
-            imgWidth = imgWidth * downscale;
-            imgHeight = pdfHeight;
-            const xOffset = (pdfWidth - imgWidth) / 2;
-
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            pdf.addImage(imgData, 'PNG', xOffset, 0, imgWidth, imgHeight);
-            pdf.save(`resume_${new Date().getTime()}.pdf`);
-        } else {
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-            pdf.save(`resume_${new Date().getTime()}.pdf`);
+            finalPdf.save(`resume_${new Date().getTime()}.pdf`);
+        } finally {
+            // cleanup
+            document.body.removeChild(wrapper);
         }
+    }).catch(err => {
+        document.body.removeChild(wrapper);
+        console.error('PDF error', err);
+        alert('Error generating PDF.');
     });
 }
 
 // Download Word with exact preview match
 function downloadWord() {
     generatePreview();
-    
-    // clone preview and compute scale to fit one A4 page when opened in Word
-    const resumeContent = document.getElementById('resumePreview').cloneNode(true);
-    const unwantedElements = resumeContent.querySelectorAll('script, style, .no-print');
-    unwantedElements.forEach(el => el.remove());
 
-    // measure on-screen preview height in pixels for 297mm mapping
-    const mm297 = (() => {
-        const div = document.createElement('div');
-        div.style.position = 'absolute';
-        div.style.visibility = 'hidden';
-        div.style.height = '297mm';
-        document.body.appendChild(div);
-        const h = div.getBoundingClientRect().height;
-        document.body.removeChild(div);
-        return h;
-    })();
+    // Clone preview and apply strict pixel-based inline styles (Word interprets px reliably)
+    const original = document.getElementById('resumePreview');
+    const clone = original.cloneNode(true);
 
-    const previewEl = document.getElementById('resumePreview');
-    const contentHeight = previewEl.getBoundingClientRect().height;
-    const scale = contentHeight > 0 ? Math.min(1, mm297 / contentHeight) : 1;
+    // Remove unwanted elements
+    clone.querySelectorAll('script, style, .no-print').forEach(el => el.remove());
 
-    // wrap content in container and apply scale so Word displays a single page similar to preview
-    const wrappedHtml = `<div style="width:210mm; transform-origin:top left; transform: scale(${scale});">${resumeContent.innerHTML}</div>`;
+    // Inline header adjustments (use px units)
+    const header = clone.querySelector('.resume-header');
+    if (header) {
+        header.style.cssText = `background:${currentTheme.primaryColor};color:#fff;padding:6px 8px;margin:0 0 6px 0;display:flex;align-items:center;gap:8px;height:auto;max-height:70px;overflow:hidden;box-sizing:border-box;`;
+        const img = header.querySelector('img');
+        if (img) img.style.cssText = 'width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #fff;';
+        const name = header.querySelector('.resume-name');
+        if (name) name.style.cssText = 'font-size:16px;font-weight:700;margin:0;';
+    }
 
-    const htmlContent = `
-        <!DOCTYPE html>
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-            <meta charset="utf-8">
-            <title>Resume</title>
-            <!--[if gte mso 9]>
-            <xml>
-                <w:WordDocument>
-                    <w:View>Print</w:View>
-                    <w:Zoom>100</w:Zoom>
-                    <w:DoNotOptimizeForBrowser/>
-                </w:WordDocument>
-            </xml>
-            <![endif]-->
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                @page { size: A4; margin: 0.5in; }
-                body { 
-                    font-family: ${currentTheme.fontFamily}; 
-                    font-size: ${currentTheme.fontSize}; 
-                    color: #1f2937;
-                    line-height: 1.4;
-                }
-                .resume-header {
-                    background-color: ${currentTheme.primaryColor};
-                    color: white;
-                    padding: 15px 20px;
-                    margin-bottom: 15px;
-                    display: table;
-                    width: 100%;
-                }
-                .resume-header-photo {
-                    display: table-cell;
-                    vertical-align: middle;
-                    padding-right: 15px;
-                }
-                .resume-header-photo img {
-                    width: 70px;
-                    height: 70px;
-                    border-radius: 35px;
-                    border: 3px solid white;
-                }
-                .resume-header-content {
-                    display: table-cell;
-                    vertical-align: middle;
-                }
-                .resume-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: white; }
-                .resume-contact { color: white; font-size: 11px; }
-                .resume-contact span { display: inline-block; margin-right: 12px; }
-                .resume-section { margin-bottom: 12px; page-break-inside: avoid; }
-                .resume-section-title {
-                    font-size: 15px;
-                    font-weight: bold;
-                    color: ${currentTheme.primaryColor};
-                    border-bottom: 2px solid ${currentTheme.primaryColor};
-                    padding-bottom: 3px;
-                    margin-bottom: 8px;
-                }
-                .resume-item { margin-bottom: 10px; page-break-inside: avoid; }
-                .resume-item-title { font-weight: bold; color: #374151; font-size: ${currentTheme.fontSize}; }
-                .resume-item-subtitle { color: #6b7280; font-size: 12px; }
-                .resume-item-date { color: #9ca3af; font-size: 11px; }
-                .resume-item-description { margin-top: 3px; color: #4b5563; font-size: 12px; }
-                .resume-skills-list {
-                    list-style: disc;
-                    margin: 5px 0 0 20px;
-                    padding: 0;
-                }
-                .resume-skills-list li {
-                    margin-bottom: 3px;
-                    color: #374151;
-                    font-size: 12px;
-                }
-                .resume-interests-list {
-                    list-style: disc;
-                    margin: 5px 0 0 20px;
-                    padding: 0;
-                }
-                .resume-interests-list li {
-                    margin-bottom: 3px;
-                    color: #374151;
-                    font-size: 12px;
-                }
-                .resume-skills-grid { margin-top: 5px; }
-                .resume-skill-item { 
-                    background-color: #f3f4f6; 
-                    padding: 4px 8px; 
-                    border-radius: 3px; 
-                    display: inline-block;
-                    margin: 2px;
-                    font-size: 11px;
-                }
-                .resume-footer {
-                    border: 2px solid ${currentTheme.primaryColor};
-                    color: #374151;
-                    padding: 10px 15px;
-                    margin-top: 15px;
-                    font-size: 11px;
-                    background: transparent;
-                }
-                .mb-3 { margin-bottom: 8px; }
-                strong { font-weight: bold; color: #374151; font-size: 12px; }
-                p { margin: 0; padding: 0; font-size: 12px; line-height: 1.4; }
-                i, .fa, .fas, .fab { display: none; }
-                a { color: inherit; text-decoration: none; }
-            </style>
-        </head>
-        <body>
-            ${wrappedHtml}
-        </body>
-        </html>
-    `;
-    
-    const blob = new Blob(['\ufeff', htmlContent], {
-        type: 'application/msword'
-    });
-    
+    // Compact contact
+    clone.querySelectorAll('.resume-contact').forEach(el => el.style.cssText = 'font-size:11px;margin:0;display:flex;gap:6px;flex-wrap:wrap;');
+
+    // Reduce section and item spacing
+    clone.querySelectorAll('.resume-section').forEach(el => el.style.marginBottom = '6px');
+    clone.querySelectorAll('.resume-section-title').forEach(el => el.style.cssText = 'font-size:13px;font-weight:700;margin:0 0 4px 0;padding:0;border-bottom:1px solid ' + currentTheme.primaryColor + ';');
+    clone.querySelectorAll('.resume-item').forEach(el => el.style.marginBottom = '4px');
+    clone.querySelectorAll('.resume-item-title').forEach(el => el.style.fontSize = '12px');
+    clone.querySelectorAll('.resume-item-subtitle').forEach(el => el.style.fontSize = '11px');
+    clone.querySelectorAll('.resume-item-date').forEach(el => el.style.fontSize = '10px');
+
+    // Prepare HTML with conservative page margins and px sizes
+    const htmlContent = `<!doctype html><html><head><meta charset="utf-8"><title>Resume</title>
+        <style>
+            *{box-sizing:border-box;margin:0;padding:0}
+            @page{size:A4;margin:18mm}
+            body{font-family:${currentTheme.fontFamily};font-size:12px;color:#1f2937}
+            .resume-header{width:100%}
+        </style></head><body>${clone.innerHTML}</body></html>`;
+
+    const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `resume_${new Date().getTime()}.doc`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement('a');
+    a.href = url; a.download = `resume_${new Date().getTime()}.doc`;
+    document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
 }
